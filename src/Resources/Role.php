@@ -16,6 +16,7 @@ use Laravel\Nova\Fields\DateTime;
 use Laravel\Nova\Fields\MorphToMany;
 use Laravel\Nova\Fields\BelongsToMany;
 use Spatie\Permission\PermissionRegistrar;
+use Laravel\Nova\Actions\ActionResource;
 
 class Role extends Resource
 {
@@ -62,7 +63,7 @@ class Role extends Resource
     /**
      * Get the fields displayed by the resource.
      *
-     * @param  \Illuminate\Http\Request $request
+     * @param Request $request
      * @return array
      */
     public function fields(Request $request)
@@ -70,25 +71,25 @@ class Role extends Resource
         $userResource = Nova::resourceForModel(getModelForGuard($this->guard_name));
 
         foreach (Nova::$resources as $resource) {
-            if($resource == 'Laravel\Nova\Actions\ActionResource') {
+            if ($resource == ActionResource::class) {
                 continue;
             }
             $resourceName = strtolower(substr(strrchr($resource, "\\"), 1));
             $resourcePermissions = [
-                "viewAny $resourceName"         => "viewAny $resourceName",
-                "create $resourceName"          => "create $resourceName",
-                "update $resourceName"          => "update $resourceName",
-                "view $resourceName"            => "view $resourceName",
-                "delete $resourceName"          => "delete $resourceName",
-                "force delete $resourceName"    => "force delete $resourceName",
-                "restore $resourceName"         => "restore $resourceName",
-                "attach $resourceName"          => "attach $resourceName",
-                "detach $resourceName"          => "detach $resourceName"
+                "viewAny $resourceName" => "viewAny $resourceName",
+                "create $resourceName" => "create $resourceName",
+                "update $resourceName" => "update $resourceName",
+                "view $resourceName" => "view $resourceName",
+                "delete $resourceName" => "delete $resourceName",
+                "force delete $resourceName" => "force delete $resourceName",
+                "restore $resourceName" => "restore $resourceName",
+                "attach $resourceName" => "attach $resourceName",
+                "detach $resourceName" => "detach $resourceName"
             ];
             // add resource actions
             $object = new $resource($resource::$model);
             foreach ($object->actions($request) as $action) {
-                if($action->name) {
+                if ($action->name) {
                     $resourcePermissions[$action->name] = $action->name;
                 }
             }
@@ -99,26 +100,30 @@ class Role extends Resource
             }
         }
 
-        $fields =  [
+        $fields = [
             ID::make()->sortable(),
 
             Text::make(__('PermissionTool::roles.name'), 'name')
                 ->rules(['required', 'string', 'max:255'])
-                ->creationRules('unique:'.config('permission.table_names.roles'))
-                ->updateRules('unique:'.config('permission.table_names.roles').',name,{{resourceId}}'),
+                ->creationRules('unique:' . config('permission.table_names.roles'))
+                ->updateRules('unique:' . config('permission.table_names.roles') . ',name,{{resourceId}}'),
 
             \DigitalCloud\PermissionTool\Fields\Permission::make(__('PermissionTool::resources.Permissions'), 'permissions')->onlyOnForms(),
 
             Text::make('permissions count')->withMeta(['value' => count($this->permissions)])->exceptOnForms(),
-            Text::make('users count')->withMeta(['value' => count($this->users)])->exceptOnForms(),
-            DateTime::make(__('PermissionTool::roles.created_at'), 'created_at')->exceptOnForms(),
-            DateTime::make(__('PermissionTool::roles.updated_at'), 'updated_at')->exceptOnForms(),
-
-            BelongsToMany::make(__('PermissionTool::resources.Permissions'), 'permissions', Permission::class),
-            MorphToMany::make($userResource::label(), 'users', $userResource),
-
-
         ];
+
+        if ($userResource) {
+            $fields[] = Text::make('users count')->withMeta(['value' => count($this->users)])->exceptOnForms();
+        }
+
+        $fields[] = DateTime::make(__('PermissionTool::roles.created_at'), 'created_at')->exceptOnForms();
+        $fields[] = DateTime::make(__('PermissionTool::roles.updated_at'), 'updated_at')->exceptOnForms();
+        $fields[] = BelongsToMany::make(__('PermissionTool::resources.Permissions'), 'permissions', Permission::class);
+
+        if ($userResource) {
+            $fields[] = MorphToMany::make($userResource::label(), 'users', $userResource);
+        }
 
         return $fields;
     }
@@ -126,7 +131,7 @@ class Role extends Resource
     /**
      * Get the cards available for the request.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param Request $request
      * @return array
      */
     public function cards(Request $request)
@@ -137,7 +142,7 @@ class Role extends Resource
     /**
      * Get the filters available for the resource.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param Request $request
      * @return array
      */
     public function filters(Request $request)
@@ -148,7 +153,7 @@ class Role extends Resource
     /**
      * Get the lenses available for the resource.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param Request $request
      * @return array
      */
     public function lenses(Request $request)
@@ -159,7 +164,7 @@ class Role extends Resource
     /**
      * Get the actions available for the resource.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param Request $request
      * @return array
      */
     public function actions(Request $request)

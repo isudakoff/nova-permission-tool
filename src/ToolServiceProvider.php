@@ -2,16 +2,15 @@
 
 namespace DigitalCloud\PermissionTool;
 
-use Gate;
-use Laravel\Nova\Nova;
-use Laravel\Nova\Events\ServingNova;
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\ServiceProvider;
 use DigitalCloud\PermissionTool\Http\Middleware\Authorize;
 use DigitalCloud\PermissionTool\Policies\PermissionPolicy;
 use DigitalCloud\PermissionTool\Policies\RolePolicy;
+use Illuminate\Contracts\Auth\Access\Gate;
+use Illuminate\Contracts\Support\DeferrableProvider;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\ServiceProvider;
 
-class ToolServiceProvider extends ServiceProvider
+class ToolServiceProvider extends ServiceProvider implements DeferrableProvider
 {
     /**
      * Bootstrap any application services.
@@ -28,20 +27,6 @@ class ToolServiceProvider extends ServiceProvider
         ], 'PermissionTool-lang');
         $this->app->booted(function () {
             $this->routes();
-        });
-
-        Gate::policy(config('permission.models.permission'), PermissionPolicy::class);
-        Gate::policy(config('permission.models.role'), RolePolicy::class);
-        
-//         Super admin all permissions
-//         Gate::before(function ($user, $ability) {
-//             if ($user->email == 'mail@example.com') {
-//                 return true;
-//             }
-//         });
-        
-        Nova::serving(function (ServingNova $event) {
-            //
         });
     }
 
@@ -68,6 +53,21 @@ class ToolServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        //
+        $this->app->extend(
+            Gate::class,
+            function (Gate $gate) {
+                return $gate
+                    ->policy(config('permission.models.permission'), PermissionPolicy::class)
+                    ->policy(config('permission.models.role'), RolePolicy::class)
+                ;
+            }
+        );
+    }
+
+    public function provides()
+    {
+        return [
+            Gate::class,
+        ];
     }
 }

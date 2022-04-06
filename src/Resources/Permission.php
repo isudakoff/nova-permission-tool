@@ -60,23 +60,24 @@ class Permission extends Resource
     /**
      * Get the fields displayed by the resource.
      *
-     * @param  \Illuminate\Http\Request $request
+     * @param Request $request
+     *
      * @return array
      */
     public function fields(Request $request)
     {
         $userResource = Nova::resourceForModel(getModelForGuard($this->guard_name));
 
-        return [
+        $fields = [
             ID::make()->sortable(),
 
             Text::make(__('PermissionTool::permissions.name'), 'name')
                 ->rules(['required', 'string', 'max:255'])
-                ->creationRules('unique:'.config('permission.table_names.permissions'))
-                ->updateRules('unique:'.config('permission.table_names.permissions').',name,{{resourceId}}'),
+                ->creationRules('unique:' . config('permission.table_names.permissions'))
+                ->updateRules('unique:' . config('permission.table_names.permissions') . ',name,{{resourceId}}'),
 
             Text::make(__('PermissionTool::permissions.display_name'), function () {
-                return __('PermissionTool::permissions.display_names.'.$this->name);
+                return __('PermissionTool::permissions.display_names.' . $this->name);
             })->canSee(function () {
                 return is_array(__('PermissionTool::permissions.display_names'));
             }),
@@ -85,14 +86,20 @@ class Permission extends Resource
             DateTime::make(__('PermissionTool::permissions.updated_at'), 'updated_at')->exceptOnForms(),
 
             BelongsToMany::make(__('PermissionTool::resources.Roles'), 'roles', Role::class)->searchable(),
-            MorphToMany::make($userResource::label(), 'users', $userResource)->searchable(),
         ];
+
+        if ($userResource) {
+            $fields[] = MorphToMany::make($userResource::label(), 'users', $userResource)->searchable();
+        }
+
+        return $fields;
     }
 
     /**
      * Get the cards available for the request.
      *
-     * @param  \Illuminate\Http\Request $request
+     * @param Request $request
+     *
      * @return array
      */
     public function cards(Request $request)
@@ -103,7 +110,8 @@ class Permission extends Resource
     /**
      * Get the filters available for the resource.
      *
-     * @param  \Illuminate\Http\Request $request
+     * @param Request $request
+     *
      * @return array
      */
     public function filters(Request $request)
@@ -114,7 +122,8 @@ class Permission extends Resource
     /**
      * Get the lenses available for the resource.
      *
-     * @param  \Illuminate\Http\Request $request
+     * @param Request $request
+     *
      * @return array
      */
     public function lenses(Request $request)
@@ -125,7 +134,8 @@ class Permission extends Resource
     /**
      * Get the actions available for the resource.
      *
-     * @param  \Illuminate\Http\Request $request
+     * @param Request $request
+     *
      * @return array
      */
     public function actions(Request $request)
@@ -137,9 +147,8 @@ class Permission extends Resource
     public static function relatableQuery(NovaRequest $request, $query)
     {
         $role = \DigitalCloud\PermissionTool\Models\Role::find($request->route('resourceId'));
-        //dd($role->permissions()->pluck('permission_id'));
+
         return $query->whereNotIn('id', $role->permissions()->pluck('permission_id'));
-        return parent::relatableQuery($request, $query);
     }
 
 }
